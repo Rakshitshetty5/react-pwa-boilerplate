@@ -1,46 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js'
-
 import './App.css';
 import { ServiceWorkerUpdateListener } from './ServiceWorkerUpdateListener';
 import UpdateWaiting from './UpdateWaiting ';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
+import NetflixBackgroundImage from './images/netflix-background.png';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-const supabaseFetch = async () => {
-  const { data, error } = await supabase
-    .from('my_set')
-    .select('numbers')
-    .match({ id: 1 })
-
-  console.log(data, error)
-  if (data) return data[0].numbers
-}
-
-const supabaseUpdate = async (value) => {
-  console.log(value)
-  const { data, error } = await supabase
-    .from('my_set')
-    .update({numbers: value})
-    .match({ id: 1 })
-
-  console.log(data, error)
-}
+const API_URL = 'https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&api_key=3fd2be6f0c70a2a598f084ddfb75487c&page=1'
+const IMG_PATH = 'https://image.tmdb.org/t/p/w1280'
 
 function App() {
-  const [numbers, setNumbers] = useState([])
-  const [input, setInput] = useState('')
   const [updateWaiting, setUpdateWaiting] = useState(false);
   const [registration, setRegistration] = useState(null);
   const [swListener, setSwListener] = useState({});
   const [showBtn, setShowBtn] = useState(false)
-  useEffect(async () => {
-    const data = await supabaseFetch()
-    if (data) setNumbers(data)
-
+  const [ state, setState ] = useState([])
+  useEffect(() => {
+    (async () => {
+      const response = await fetch(API_URL)
+      const result = await response.json()
+      setState(result.results) 
+    })()
+  }, [])
+  useEffect(() => {
       if (process.env.NODE_ENV !== "development") {
         let listener = new ServiceWorkerUpdateListener();
         setSwListener(listener);
@@ -89,18 +70,6 @@ function App() {
     })
   }
 
-
-  const handleInput = (e) => {
-    setInput(e.target.value)
-  }
-  const handleSubmit = () => {
-    const newArray = numbers
-    newArray.push(input)
-    setNumbers(newArray)
-    setInput('')
-    supabaseUpdate(newArray)
-  }
-
   const handleUpdate = () => {
     swListener.skipWaiting(registration.waiting);
    }
@@ -108,21 +77,19 @@ function App() {
   return (
     <div className="App">
       <div>
-        numbers : {numbers.length > 0 && numbers.map((number, index) => {
-            if (index < numbers.length - 1) {
-              return <React.Fragment key={index}>{number}, </React.Fragment>;
-            } else {
-              return <React.Fragment key={index}>{number}</React.Fragment>;
-            }
-          })}
-      </div>
-      <br />
-      <div>
-        <label for="insert">Insert: </label>
-        <input id="insert" type='number' value={input} onChange={handleInput} />
-        <button onClick={handleSubmit}>Submit</button>
         {showBtn && <button onClick={handleInstall}>Install</button>}
         <h1>Rakshit Shetty</h1>
+        <h2>Testing font cache</h2>
+        <p>When you have some text, how can you choose a typeface? Many people—professional designers included—go through an app’s font menu until we find one we like. But the aim of this module is to show that there are many considerations that can improve our type choices. By setting some useful constraints to aid our type selection, we can also develop a critical eye for analyzing type along the way.</p>
+        <div className="overlay" style={{background: `url(${NetflixBackgroundImage})`}}/>
+        <div className='container'>
+          {
+            state.map(m => <div className='card' key={m.id}>
+              <img src={IMG_PATH + m.backdrop_path} alt={"img"} className="image"/>
+              <h1>{m.original_title}</h1>
+            </div>)
+          }
+        </div>
       </div>
       <UpdateWaiting updateWaiting={updateWaiting} handleUpdate={handleUpdate}/>
     </div>

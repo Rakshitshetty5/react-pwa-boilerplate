@@ -11,8 +11,9 @@ import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { NetworkFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies';
+import { NetworkFirst, NetworkOnly, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 import { BackgroundSyncPlugin } from "workbox-background-sync";
+import {CacheableResponsePlugin} from 'workbox-cacheable-response';
 
 clientsClaim();
 
@@ -87,4 +88,40 @@ registerRoute(
     plugins: [bgSyncPlugin],
   }),
   "PATCH"
+);
+
+registerRoute(
+  ({url}) => url.origin === 'https://api.themoviedb.org',
+  new StaleWhileRevalidate({
+    cacheName: 'movie-api-response',
+    plugins: [
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new ExpirationPlugin({maxEntries: 1}), // Will cache maximum 1 requests.
+    ]
+  })
+);
+
+registerRoute(
+  ({request}) => request.destination === 'image',
+  new CacheFirst({
+    cacheName: 'images',
+    plugins: [
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  }),
+);
+
+registerRoute(
+  ({url}) => url.origin === 'https://fonts.googleapis.com',
+  new StaleWhileRevalidate({
+    cacheName: 'google-fonts-stylesheets',
+  })
 );
